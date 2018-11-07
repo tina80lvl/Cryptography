@@ -1,0 +1,32 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/tina/Documents/ITMO/CT/Cryptography/Practice 7/main.cpp
+iostream
+-
+vector
+-
+cmath
+-
+array
+-
+cassert
+-
+unordered_map
+-
+queue
+-
+algorithm
+-
+memory.h
+-
+cstdlib
+-
+cstdio
+-
+

@@ -127,6 +127,7 @@ public:
         return res;
     }
 };
+
 class SHA256 {
 protected:
     typedef unsigned char uint8;
@@ -315,19 +316,16 @@ std::vector<char> sha256(std::string input) {
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> T;
-std::string d;
-
 char zero = 0, one = 1, two = 2;
 
-std::string toString(std::vector<byte> const& v) {
+std::string to_string(std::vector<byte> const& v) {
     std::string s = "";
     for (int i = 0; i < v.size(); i++) {
         s += (char)v[i];
     }
     return s;
 }
-std::string toString(std::vector<char> const& v) {
+std::string to_string(std::vector<char> const& v) {
     std::string s;
     for (int i = 0; i < v.size(); i++) {
         s += (char)v[i];
@@ -335,27 +333,18 @@ std::string toString(std::vector<char> const& v) {
     return s;
 }
 
-int main() {
-//    freopen("input.txt", "r", stdin);
-    int h;
-    std::cin >> h;
-    std::string hash;
-    std::cin >> hash;
-    hash = toString(base64::decode(hash));
-    int q;
-    std::cin >> q;
-//    std::vector<int> id(pow(2, h));
-//    std::vector<std::string> data;
+bool check_proof(std::string hash, int id, std::string pk) {
+    int h = 8;
+    hash = to_string(base64::decode(hash));
 
+    int q = 1;
     for (int block = 0; block < q; block++) {
-        int id;
-        std::string data;
-        std::cin >> id >> data;
+        std::string data = pk;
 
         if (data == "null") {
             data = "";
         } else {
-            data = toString(sha256(zero + toString(base64::decode(data))));
+            data = to_string(sha256(zero + to_string(base64::decode(data))));
         }
 
         for (int neigbour = 0; neigbour < h; neigbour++) {
@@ -364,25 +353,116 @@ int main() {
             if (n_data == "null") {
                 n_data = "";
             } else {
-                n_data = toString(base64::decode(n_data));
+                n_data = to_string(base64::decode(n_data));
             }
 
             if (n_data != "" || data != "") {
                 if (id % 2) {
-                    data = toString(sha256(one + n_data + two + data));
+                    data = to_string(sha256(one + n_data + two + data));
                 } else {
-                    data = toString(sha256(one + data + two + n_data));
+                    data = to_string(sha256(one + data + two + n_data));
                 }
             }
             id /= 2;
         }
 
         if (data == hash) {
-            std::cout << "YES\n";
+            return true;
         } else {
-            std::cout << "NO\n";
+            return false;
+        }
+    }
+}
+
+int main() {
+//    freopen("input.txt", "r", stdin);
+    std::string hash;
+    std::cin >> hash;
+
+    std::vector<std::vector<byte>> is_signed(2, std::vector<byte>(256));
+    std::vector<bool> used(256, false);
+    while (true) {
+        int id;
+        std::cin >> id;
+
+        if (!used[id]) {
+            for (size_t i = 0; i < 256; ++i) {
+                std::cout << 0;
+            }
+            std::cout << std::endl;
+        } else {
+            for (size_t i = 0; i < 256; ++i) {
+                std::cout << 1;
+            }
+            std::cout << std::endl;
+        }
+
+        bool lie = true;
+        std::string sign, public_key;
+        std::cin >> sign;
+        std::cin >> public_key;
+
+        //// check proof -> lie
+        if (!check_proof(hash, id, public_key)) {
+            lie = false;
+        }
+
+        //// check is sign correct
+        size_t col = 0;
+        if (used[id]) {
+            col = 1;
+        }
+        for (size_t i = 0; i < 256; ++i) {
+            std::string y = public_key.substr((col * 256 + i) * 32, 32);
+            if (to_string(sha256(sign.substr(i * 32, 32))) != y) {
+                lie = false;
+                break;
+            }
+        }
+
+        std::vector<byte> dec_sign = base64::decode(sign), dec_pub_key = base64::decode(public_key);
+
+        std::string to_answer;
+        std::cin >> to_answer;
+
+        if (lie) {
+            std::cout << "YES\n";
+            if (!used[id]) {
+                for (size_t i = 0; i < 256; ++i) {
+                    is_signed[0][i] = dec_sign[i];
+                }
+                used[id] = true;
+                std::cout << "NO\n";
+            } else {
+                for (size_t i = 0; i < 256; ++i) {
+                    is_signed[1][i] = dec_sign[i];
+                }
+                std::cout << "YES\n";
+                std::vector<byte> answer;
+                //// encode
+                for (size_t i = 0; i < to_answer.length(); ++i) {
+                    if (to_answer[i] == '0') {
+//                        answer.push_back(is_signed[0][i]);
+                        for (size_t j = 0; j < 32; ++j) {
+                            answer.push_back(is_signed[0][i * 32 + j]);
+                        }
+                    } else {
+                        for (size_t j = 0; j < 32; ++j) {
+                            answer.push_back(is_signed[1][i * 32 + j]);
+                        }
+                    }
+//                    answer.push_back(is_signed[to_answer[i] - '0'][i]);
+                }
+                std::cout << base64::encode(answer) << std::endl;
+                break;
+            }
+        } else {
+            std::cout << "NO\nNO\n";
         }
 
     }
+
+
     return 0;
 }
+
